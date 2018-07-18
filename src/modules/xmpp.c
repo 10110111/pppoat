@@ -165,6 +165,28 @@ static void module_xmpp_fini(void *userdata)
 	xmpp_shutdown();
 }
 
+static int presence_handler(xmpp_conn_t * const   conn,
+			    xmpp_stanza_t * const stanza,
+			    void * const          userdata)
+{
+	struct pppoat_xmpp_ctx *ctx = userdata;
+	const char*const type = xmpp_stanza_get_type(stanza);
+	/* Only handle the case when our peer has disconnected */
+	if(!type || strcmp(type,"unavailable")!=0)
+		return 1;
+	pppoat_debug("xmpp", "Client disconnected");
+	const char*const from = xmpp_stanza_get_from(stanza);
+	PPPOAT_ASSERT(from != NULL);
+	if(ctx->xc_to && strcmp(ctx->xc_to, from)==0)
+	{
+		pppoat_debug("xmpp", "Clearing xc_to, next connection will be anew");
+		pppoat_free(ctx->xc_to);
+		ctx->xc_to = NULL;
+		ctx->xc_to_trusted = false;
+	}
+	return 1;
+}
+
 static int message_handler(xmpp_conn_t * const   conn,
 			   xmpp_stanza_t * const stanza,
 			   void * const          userdata)
@@ -246,6 +268,8 @@ static void conn_handler(xmpp_conn_t * const         conn,
 
 	if (status == XMPP_CONN_CONNECT) {
 		xmpp_handler_add(conn, message_handler, NULL, "message",
+				 NULL, ctx);
+		xmpp_handler_add(conn, presence_handler, NULL, "presence",
 				 NULL, ctx);
 		presence = xmpp_presence_new(ctx->xc_ctx);
 		PPPOAT_ASSERT(presence != NULL);
