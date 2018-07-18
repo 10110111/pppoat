@@ -170,6 +170,15 @@ static int presence_handler(xmpp_conn_t * const   conn,
 			    void * const          userdata)
 {
 	struct pppoat_xmpp_ctx *ctx = userdata;
+
+	/* Ignore delayed messages */
+	xmpp_stanza_t* delay = xmpp_stanza_get_child_by_ns(stanza, XMPP_NS_XEP_0091);
+	if (delay != NULL)
+		return 1;
+	delay = xmpp_stanza_get_child_by_ns(stanza, XMPP_NS_XEP_0203);
+	if (delay != NULL)
+		return 1;
+
 	const char*const type = xmpp_stanza_get_type(stanza);
 	/* Only handle the case when our peer has disconnected */
 	if(!type || strcmp(type,"unavailable")!=0)
