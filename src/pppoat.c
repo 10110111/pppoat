@@ -134,7 +134,11 @@ int main(int argc, char **argv)
 
 	/* XXX Check mandatory options. Replace with better solution. */
 	present = pppoat_conf_get(&conf, "module") != NULL;
-	PPPOAT_ASSERT_INFO(present, "Mandatory option is missed");
+	if(!present)
+	{
+		fprintf(stderr, "Mandatory option -m is missing\n");
+		return 1;
+	}
 
 	if_name = pppoat_conf_get(&conf, "if");
 	im = if_name == NULL ? if_module_tbl[0] : if_module_find(if_name);
