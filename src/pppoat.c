@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 #include "trace.h"
 #include "pppoat.h"
@@ -116,6 +117,8 @@ int main(int argc, char **argv)
 	int                            rd[2];
 	int                            wr[2];
 	int                            rc;
+
+	signal(SIGPIPE, SIG_IGN);
 
 	pppoat_log_init(PPPOAT_DEBUG);
 	rc = pppoat_conf_init(&conf);
