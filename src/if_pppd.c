@@ -115,10 +115,10 @@ static int if_module_pppd_run(int rd, int wr, void *userdata)
 		close(rd);
 		close(wr);
 		/* XXX opposite sides of the pipes are not closed */
-		pppoat_debug("pppd", "%s nodetach noauth notty passive %s",
+		pppoat_debug("pppd", "%s nodetach noauth notty passive %s lcp-echo-interval 0",
 			     pppd, ip == NULL ? "" : ip);
 		execl(pppd, pppd, "nodetach", "noauth",
-		      "notty", "passive", ip, NULL);
+		      "notty", "passive", ip, "lcp-echo-interval", "0", NULL);
 		pppoat_error("main", "execl() should never return");
 		exit(1);
 	}
