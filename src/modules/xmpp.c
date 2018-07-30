@@ -22,6 +22,7 @@
 #include <string.h>
 #include <strophe.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "trace.h"
 #include "modules/xmpp.h"
@@ -313,11 +314,25 @@ static int module_xmpp_run(int rd, int wr, int ctrl, void *userdata)
 	xmpp_conn_set_pass(conn, ctx->xc_passwd);
 	xmpp_connect_client(conn, NULL, 0, &conn_handler, userdata);
 
+	time_t lastKeepAliveTime=time(NULL);
+	PPPOAT_ASSERT(lastKeepAliveTime != (time_t)-1);
 	while (!ctx->xc_stop) {
 		xmpp_run_once(ctx->xc_ctx, PPPOAT_XMPP_TIMEOUT);
 
 		if (!ctx->xc_connected)
 			continue;
+
+		const time_t currTime = time(NULL);
+		PPPOAT_ASSERT(currTime != (time_t)-1);
+		if(currTime > lastKeepAliveTime+60*10)
+		{
+			// Send a keepalive message in the form of <presence/>
+			xmpp_stanza_t*const presence = xmpp_presence_new(ctx->xc_ctx);
+			PPPOAT_ASSERT(presence != NULL);
+			xmpp_send(conn, presence);
+			xmpp_stanza_release(presence);
+			lastKeepAliveTime = currTime;
+		}
 
 		len = read(rd, buf, PPPOAT_XMPP_BUF_SIZE);
 		if (len > 0) {
