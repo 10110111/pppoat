@@ -52,6 +52,7 @@ struct pppoat_xmpp_ctx {
 	bool                xc_to_trusted;
 	int                 xc_rd;
 	int                 xc_wr;
+    time_t              last_interaction_time;
 };
 
 static void pppoat_xmpp_log(void                  *userdata,
@@ -141,6 +142,7 @@ static int module_xmpp_init(struct pppoat_conf *conf, void **userdata)
 		ctx->xc_connected  = false;
 		ctx->xc_stop       = false;
 		ctx->xc_to_trusted = false;
+        ctx->last_interaction_time = 0;
 
 		resource = ctx->xc_to == NULL ? NULL :
 			   xmpp_jid_resource(ctx->xc_ctx, ctx->xc_to);
@@ -166,6 +168,14 @@ static void module_xmpp_fini(void *userdata)
 	xmpp_shutdown();
 }
 
+static void mark_client_disconnected(struct pppoat_xmpp_ctx* ctx)
+{
+    pppoat_debug("xmpp", "Clearing xc_to, next connection will be anew");
+    pppoat_free(ctx->xc_to);
+    ctx->xc_to = NULL;
+    ctx->xc_to_trusted = false;
+}
+
 static int presence_handler(xmpp_conn_t * const   conn,
 			    xmpp_stanza_t * const stanza,
 			    void * const          userdata)
@@ -181,19 +191,18 @@ static int presence_handler(xmpp_conn_t * const   conn,
 		return 1;
 
 	const char*const type = xmpp_stanza_get_type(stanza);
-	/* Only handle the case when our peer has disconnected */
-	if(!type || strcmp(type,"unavailable")!=0)
-		return 1;
-	pppoat_debug("xmpp", "Client disconnected");
 	const char*const from = xmpp_stanza_get_from(stanza);
+	if(!type || strcmp(type,"unavailable")!=0)
+    {
+        if(ctx->xc_to && strcmp(ctx->xc_to, from)==0)
+            ctx->last_interaction_time=time(NULL);
+		return 1;
+    }
+    /* OK, so presence is "unavailable" */
+	pppoat_debug("xmpp", "Client disconnected");
 	PPPOAT_ASSERT(from != NULL);
 	if(ctx->xc_to && strcmp(ctx->xc_to, from)==0)
-	{
-		pppoat_debug("xmpp", "Clearing xc_to, next connection will be anew");
-		pppoat_free(ctx->xc_to);
-		ctx->xc_to = NULL;
-		ctx->xc_to_trusted = false;
-	}
+        mark_client_disconnected(ctx);
 	return 1;
 }
 
@@ -249,6 +258,8 @@ static int message_handler(xmpp_conn_t * const   conn,
 		pppoat_debug("xmpp", "Ignore unkown source");
 		return 1;
 	}
+
+    ctx->last_interaction_time=time(NULL);
 
 	b64 = xmpp_message_get_body(stanza);
 	if (b64 == NULL) {
@@ -323,6 +334,11 @@ static int module_xmpp_run(int rd, int wr, int ctrl, void *userdata)
 			continue;
 
 		const time_t currTime = time(NULL);
+        if(ctx->xc_to_trusted && currTime > ctx->last_interaction_time+60*2)
+        {
+            pppoat_debug("xmpp", "Client not seen for too long, treating it as disconnected");
+            mark_client_disconnected(ctx);
+        }
 		PPPOAT_ASSERT(currTime != (time_t)-1);
 		if(currTime > lastKeepAliveTime+60*1)
 		{
