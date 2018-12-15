@@ -324,7 +324,7 @@ static int module_xmpp_run(int rd, int wr, int ctrl, void *userdata)
 
 		const time_t currTime = time(NULL);
 		PPPOAT_ASSERT(currTime != (time_t)-1);
-		if(currTime > lastKeepAliveTime+60*10)
+		if(currTime > lastKeepAliveTime+60*1)
 		{
 			// Send a keepalive message in the form of <presence/>
 			xmpp_stanza_t*const presence = xmpp_presence_new(ctx->xc_ctx);
