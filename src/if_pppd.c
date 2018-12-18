@@ -60,7 +60,7 @@ static const char *pppd_find(void)
 			break;
 		} else if (errno != ENOENT) {
 			pppoat_info("pppd", "%s exists, but access(2) returned"
-				    "errno=%d", pppd_paths[i], errno);
+				    "errno=%d %s", pppd_paths[i], errno, strerror(errno));
 		}
 	}
 	return i < ARRAY_SIZE(pppd_paths) ? pppd_paths[i] : NULL;

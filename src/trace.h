@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "log.h"
 
@@ -51,8 +52,8 @@
 		if (!__expr) {                                                 \
 			pppoat_fatal("trace",                                  \
 				     TRACE_LOC_F" Assertion `%s' failed"       \
-				     " (errno=%d)",                            \
-				     TRACE_LOC_P, # expr, errno);              \
+				     " (errno=%d %s)",                         \
+				     TRACE_LOC_P, # expr, errno, strerror(errno));\
 			if (__fmt != NULL) {                                   \
 				pppoat_fatal("trace", __fmt, ## __VA_ARGS__);  \
 			}                                                      \
